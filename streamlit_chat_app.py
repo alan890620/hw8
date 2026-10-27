@@ -6,29 +6,34 @@ import base64
 from PIL import Image
 
 # 設定網頁標題
-st.title("Gork聊天室")
+st.title("Gork 聊天室")
 st.write("同時支援文字與圖片同時上傳並作為提示詞送出的聊天介面。")
 
-# 1. 嘗試從根目錄的 api_key.txt 讀取 API Key
-api_key_file = "api_key.txt"
+# ==========================================
+# API Key 智慧讀取機制（自動擇一）
+# ==========================================
 groq_api_key = None
 
-if os.path.exists(api_key_file):
+# 1. 優先嘗試從 Streamlit Cloud 的 Secrets 讀取（適用雲端部署）
+if "GROQ_API_KEY" in st.secrets:
+    groq_api_key = st.secrets["GROQ_API_KEY"]
+
+# 2. 如果 Secrets 沒有，嘗試從本機根目錄的 api_key.txt 讀取（適用本機開發）
+api_key_file = "api_key.txt"
+if not groq_api_key and os.path.exists(api_key_file):
     try:
         with open(api_key_file, "r", encoding="utf-8") as f:
-            groq_api_key = f.read().strip()  # 讀取並去除前後空白與換行
+            groq_api_key = f.read().strip()
     except Exception as e:
         st.error(f"讀取 {api_key_file} 時發生錯誤：{str(e)}")
-else:
-    st.warning(f"找不到 `{api_key_file}` 檔案，請確保它與此程式放在同一個資料夾下！")
 
-# 如果檔案讀不到金鑰，提供側邊欄手動輸入作為備用防呆
+# 3. 如果兩者都找不到，提供側邊欄手動輸入作為防呆備用
 if not groq_api_key:
     groq_api_key = st.sidebar.text_input("請手動輸入您的 Groq API Key", type="password")
 
-# 檢查是否有成功取得金鑰
+# 4. 最終防呆檢查
 if not groq_api_key:
-    st.info("請在專案根目錄建立 `api_key.txt` 並填入金鑰，或從側邊欄輸入後才能開始聊天。")
+    st.warning("找不到 API Key！請在 Streamlit Cloud 設定 Secrets、在根目錄建立 `api_key.txt`，或從側邊欄輸入金鑰才能開始聊天。")
     st.stop()
 
 # 初始化 Groq 客戶端
